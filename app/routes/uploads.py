@@ -35,8 +35,8 @@ def init_upload():
 
     # Basic extension validation
     ext = os.path.splitext(filename)[1].lower()
-    if ext not in current_app.config.get('ALLOWED_EXTENSIONS', {'.iso', '.bin', '.img'}):
-        return jsonify({'error': 'Apenas arquivos ISO, BIN ou IMG são permitidos'}), 400
+    if ext not in current_app.config.get('ALLOWED_EXTENSIONS', {'.iso', '.bin', '.img', '.zip', '.7z', '.rar'}):
+        return jsonify({'error': 'Formato de arquivo não permitido'}), 400
 
     # Generate a unique ID for this upload session
     upload_id = str(uuid.uuid4())
@@ -105,6 +105,7 @@ def complete_upload(upload_id):
     """Reassemble the chunks and process the ISO."""
     data = request.json
     filename = data.get('filename')
+    password = data.get('password')
 
     if not filename:
         return jsonify({'error': 'Nome do arquivo não fornecido'}), 400
@@ -123,10 +124,11 @@ def complete_upload(upload_id):
         from app.services.extractor import is_archive, start_extraction
 
         if is_archive(final_path):
-            start_extraction(final_path, dvd_dir, cd_dir, art_dir, current_app._get_current_object())
+            start_extraction(upload_id, final_path, dvd_dir, cd_dir, art_dir, current_app._get_current_object(), password=password)
             return jsonify({
                 'message': 'Upload concluído. Extração iniciada em segundo plano.',
-                'background': True
+                'background': True,
+                'task_id': upload_id
             })
         else:
             # Process ISO synchronously (renaming, placing in DVD/CD)

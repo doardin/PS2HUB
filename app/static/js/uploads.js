@@ -13,7 +13,8 @@ const PS2Uploads = (() => {
     const uploadsList = $('#uploads-list');
 
     // ── State ──────────────────────────────────────────────────
-    const activeUploads = new Map(); // id -> { id, file, status, progress, controller, el }
+    const activeUploads = new Map(); // id -> { id, file, status, progress, controller, el, serverUploadId, taskId, isBackground, isComplete, isError }
+    let tasksPollInterval = null;
 
     // ── Constants ──────────────────────────────────────────────
     const ALLOWED_EXTENSIONS = ['.iso', '.bin', '.img', '.zip', '.7z', '.rar'];
@@ -118,6 +119,53 @@ const PS2Uploads = (() => {
         }
     }
 
+    async function pollTasks() {
+        let hasActiveTasks = false;
+        for (const [id, upload] of activeUploads.entries()) {
+            if (upload.isBackground && !upload.isComplete && !upload.isError) {
+                hasActiveTasks = true;
+                break;
+            }
+        }
+
+        if (!hasActiveTasks) {
+            if (tasksPollInterval) {
+                clearInterval(tasksPollInterval);
+                tasksPollInterval = null;
+            }
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/extractions');
+            if (!res.ok) return;
+            const data = await res.json();
+            const tasks = data.tasks || {};
+
+            for (const [id, upload] of activeUploads.entries()) {
+                if (upload.isBackground && !upload.isComplete && !upload.isError && upload.taskId) {
+                    const task = tasks[upload.taskId];
+                    if (task) {
+                        const speedEl = upload.el.querySelector(`#upload-speed-${upload.id}`);
+                        if (speedEl) speedEl.textContent = task.message || '';
+
+                        if (task.status === 'complete') {
+                            upload.isComplete = true;
+                            updateUploadUI(id, 100, upload.file.size, 0, 'Concluído', true);
+                            if (typeof PS2Library !== 'undefined') PS2Library.loadLibrary();
+                        } else if (task.status === 'error') {
+                            upload.isError = true;
+                            updateUploadUI(id, upload.progress, 0, 0, 'Erro', false, true);
+                            if (speedEl) speedEl.textContent = task.error || 'Falha na extração';
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('[Uploads] Error polling tasks:', err);
+        }
+    }
+
     // ── Upload Logic ───────────────────────────────────────────
     async function processFiles(files) {
         for (const file of files) {
@@ -137,7 +185,11 @@ const PS2Uploads = (() => {
                 progress: 0,
                 controller: new AbortController(),
                 el: null,
-                serverUploadId: null
+                serverUploadId: null,
+                taskId: null,
+                isBackground: false,
+                isComplete: false,
+                isError: false
             };
 
             uploadInfo.el = createUploadUI(uploadInfo);
@@ -238,17 +290,26 @@ const PS2Uploads = (() => {
         // 3. Complete and Process
         updateUploadUI(upload.id, 100, file.size, 0, 'Processando...');
 
+        const passwordInput = document.querySelector('#upload-password-input');
+        const password = passwordInput ? passwordInput.value.trim() : '';
+
         try {
             const completeData = await PS2Hub.api(`/uploads/${upload.serverUploadId}/complete`, {
                 method: 'POST',
-                body: JSON.stringify({ filename: file.name }),
+                body: JSON.stringify({ filename: file.name, password: password }),
                 signal: controller.signal
             });
 
             if (completeData.background) {
+                upload.taskId = completeData.task_id;
+                upload.isBackground = true;
                 updateUploadUI(upload.id, 100, file.size, 0, 'Extraindo...', false, false, true);
                 const speedEl = upload.el.querySelector(`#upload-speed-${upload.id}`);
-                if (speedEl) speedEl.textContent = 'Trabalhando em background';
+                if (speedEl) speedEl.textContent = 'Na fila...';
+                
+                if (!tasksPollInterval) {
+                    tasksPollInterval = setInterval(pollTasks, 2000);
+                }
             } else {
                 updateUploadUI(upload.id, 100, file.size, 0, 'Concluído', true);
             }
@@ -292,6 +353,9 @@ const PS2Uploads = (() => {
     function dismissUpload(id) {
         const upload = activeUploads.get(id);
         if (upload && upload.el) {
+            if (upload.taskId) {
+                fetch(`/api/extractions/${upload.taskId}`, { method: 'DELETE' }).catch(() => {});
+            }
             upload.el.remove();
             activeUploads.delete(id);
         }

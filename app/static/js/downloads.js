@@ -48,8 +48,41 @@ const PS2Downloads = (() => {
                 return;
             }
 
+            // Fetch background extractions
+            let extractionsList = [];
+            try {
+                const extRes = await fetch('/api/extractions');
+                if (extRes.ok) {
+                    const extData = await extRes.json();
+                    const tasks = extData.tasks || {};
+                    for (const [taskId, task] of Object.entries(tasks)) {
+                        // Aria2 GIDs are 16 chars hex, UUIDs are 36 chars.
+                        if (taskId.length !== 16) continue;
+
+                        let dlStatus = 'waiting';
+                        if (task.status === 'extracting' || task.status === 'processing') dlStatus = 'active';
+                        else if (task.status === 'complete') dlStatus = 'complete';
+                        else if (task.status === 'error') dlStatus = 'error';
+
+                        extractionsList.push({
+                            gid: taskId,
+                            filename: task.filename || 'Descompactando...',
+                            status: dlStatus,
+                            progress: (task.status === 'complete') ? 100 : 0,
+                            total_human: 'Aguarde',
+                            completed_human: '-',
+                            speed_human: task.message || '',
+                            error: task.error,
+                            isExtraction: true
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error('[Downloads] Error fetching extractions:', err);
+            }
+
             hideAria2Error();
-            renderDownloads(data.downloads);
+            renderDownloads([...data.downloads, ...extractionsList]);
 
             // Auto-process completed downloads
             for (const dl of data.downloads) {
@@ -65,8 +98,10 @@ const PS2Downloads = (() => {
 
     async function addDownload() {
         const input = $('#download-url-input');
+        const pwdInput = $('#download-password-input');
         const hint = $('#download-hint');
         const url = input.value.trim();
+        const password = pwdInput ? pwdInput.value.trim() : '';
 
         if (!url) {
             showHint('Cole uma URL para baixar', 'error');
@@ -82,10 +117,11 @@ const PS2Downloads = (() => {
         try {
             const data = await PS2Hub.api('/downloads', {
                 method: 'POST',
-                body: JSON.stringify({ url }),
+                body: JSON.stringify({ url, password }),
             });
 
             input.value = '';
+            if (pwdInput) pwdInput.value = '';
             showHint('Download adicionado!', 'success');
             refreshDownloads();
         } catch (err) {
@@ -140,6 +176,13 @@ const PS2Downloads = (() => {
         }
     }
 
+    async function dismissExtraction(gid) {
+        try {
+            await fetch(`/api/extractions/${gid}`, { method: 'DELETE' });
+            refreshDownloads();
+        } catch (err) {}
+    }
+
     // ── Render ─────────────────────────────────────────────────
     function renderDownloads(downloads) {
         const list = $('#downloads-list');
@@ -179,26 +222,32 @@ const PS2Downloads = (() => {
             }
 
             let actionsHtml = '';
-            if (isDownloading) {
-                actionsHtml = `
-                    <button class="dl-action dl-action--pause" onclick="PS2Downloads.pause('${dl.gid}')">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                        Pausar
-                    </button>
-                    <button class="dl-action dl-action--cancel" onclick="PS2Downloads.cancel('${dl.gid}')">✕</button>
-                `;
-            } else if (isPaused) {
-                actionsHtml = `
-                    <button class="dl-action dl-action--resume" onclick="PS2Downloads.resume('${dl.gid}')">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                        Continuar
-                    </button>
-                    <button class="dl-action dl-action--cancel" onclick="PS2Downloads.cancel('${dl.gid}')">✕</button>
-                `;
-            } else if (isComplete || isError) {
-                actionsHtml = `
-                    <button class="dl-action dl-action--cancel" onclick="PS2Downloads.cancel('${dl.gid}')">Remover</button>
-                `;
+            if (dl.isExtraction) {
+                if (isComplete || isError) {
+                    actionsHtml = `<button class="dl-action dl-action--cancel" onclick="PS2Downloads.dismissExtraction('${dl.gid}')">Ocultar</button>`;
+                }
+            } else {
+                if (isDownloading) {
+                    actionsHtml = `
+                        <button class="dl-action dl-action--pause" onclick="PS2Downloads.pause('${dl.gid}')">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                            Pausar
+                        </button>
+                        <button class="dl-action dl-action--cancel" onclick="PS2Downloads.cancel('${dl.gid}')">✕</button>
+                    `;
+                } else if (isPaused) {
+                    actionsHtml = `
+                        <button class="dl-action dl-action--resume" onclick="PS2Downloads.resume('${dl.gid}')">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            Continuar
+                        </button>
+                        <button class="dl-action dl-action--cancel" onclick="PS2Downloads.cancel('${dl.gid}')">✕</button>
+                    `;
+                } else if (isComplete || isError) {
+                    actionsHtml = `
+                        <button class="dl-action dl-action--cancel" onclick="PS2Downloads.cancel('${dl.gid}')">Remover</button>
+                    `;
+                }
             }
 
             return `
@@ -297,5 +346,6 @@ const PS2Downloads = (() => {
         resume: resumeDownload,
         cancel: cancelDownload,
         refresh: refreshDownloads,
+        dismissExtraction: dismissExtraction,
     };
 })();

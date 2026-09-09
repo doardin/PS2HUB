@@ -1,5 +1,7 @@
 """Downloads API routes — manage downloads via aria2."""
 import re
+import json
+import os
 from urllib.parse import urlparse
 
 from flask import Blueprint, current_app, jsonify, request
@@ -8,6 +10,36 @@ from app.services.aria2_client import Aria2Client, Aria2Error, format_download
 from app.services.file_processor import is_valid_iso, process_iso
 
 downloads_bp = Blueprint('downloads', __name__)
+
+_PWD_FILE = 'data/passwords.json'
+
+def _save_password(gid, password):
+    os.makedirs('data', exist_ok=True)
+    pwds = {}
+    if os.path.exists(_PWD_FILE):
+        try:
+            with open(_PWD_FILE, 'r') as f:
+                pwds = json.load(f)
+        except Exception:
+            pass
+    pwds[gid] = password
+    with open(_PWD_FILE, 'w') as f:
+        json.dump(pwds, f)
+
+def _pop_password(gid):
+    if not os.path.exists(_PWD_FILE): return None
+    try:
+        with open(_PWD_FILE, 'r') as f:
+            pwds = json.load(f)
+        pwd = pwds.pop(gid, None)
+        with open(_PWD_FILE, 'w') as f:
+            json.dump(pwds, f)
+        return pwd
+    except Exception:
+        return None
+
+def _remove_password(gid):
+    _pop_password(gid)
 
 
 def _get_aria2():
@@ -74,6 +106,7 @@ def add_download():
     """Add a new download by URL."""
     data = request.get_json(silent=True) or {}
     url = data.get('url', '').strip()
+    password = data.get('password', '').strip()
 
     # Validate URL
     valid, result = _validate_url(url)
@@ -85,6 +118,8 @@ def add_download():
 
     try:
         gid = aria2.add_download(result, download_dir=download_dir)
+        if password:
+            _save_password(gid, password)
         return jsonify({
             'gid': gid,
             'message': 'Download adicionado',
@@ -121,6 +156,7 @@ def cancel_download(gid):
     aria2 = _get_aria2()
     try:
         aria2.remove(gid)
+        _remove_password(gid)
         return jsonify({'message': 'Download cancelado'})
     except Aria2Error as e:
         return jsonify({'error': str(e)}), 400
@@ -145,29 +181,45 @@ def process_download(gid):
         return jsonify({'error': 'Nenhum arquivo encontrado'}), 400
 
     filepath = files[0].get('path', '')
-    if not filepath or not is_valid_iso(filepath):
-        return jsonify({'error': 'Arquivo não é uma ISO válida de PS2'}), 400
+    from app.services.extractor import is_archive, start_extraction
+    if not filepath or (not is_valid_iso(filepath) and not is_archive(filepath)):
+        return jsonify({'error': 'Arquivo não é uma ISO ou compactado válido'}), 400
 
     # Process the ISO
     dvd_dir = current_app.config['DVD_DIR']
     cd_dir = current_app.config['CD_DIR']
     art_dir = current_app.config['ART_DIR']
 
-    result = process_iso(filepath, dvd_dir, cd_dir, art_dir)
-
-    if result:
-        # Clean up aria2 result entry
+    if is_archive(filepath):
+        password = _pop_password(gid)
+        start_extraction(gid, filepath, dvd_dir, cd_dir, art_dir, current_app._get_current_object(), password=password)
+        
         try:
             aria2.remove(gid)
         except Aria2Error:
             pass
 
         return jsonify({
-            'message': 'ISO processada com sucesso',
-            'result': result,
+            'message': 'Download concluído. Extração em segundo plano iniciada.',
+            'background': True,
+            'task_id': gid
         })
     else:
-        return jsonify({'error': 'Não foi possível processar a ISO'}), 500
+        result = process_iso(filepath, dvd_dir, cd_dir, art_dir)
+
+        if result:
+            # Clean up aria2 result entry
+            try:
+                aria2.remove(gid)
+            except Aria2Error:
+                pass
+
+            return jsonify({
+                'message': 'ISO processada com sucesso',
+                'result': result,
+            })
+        else:
+            return jsonify({'error': 'Não foi possível processar a ISO'}), 500
 
 
 @downloads_bp.route('/downloads/status', methods=['GET'])
