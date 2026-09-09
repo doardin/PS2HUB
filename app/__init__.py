@@ -30,9 +30,11 @@ def create_app(config_override=None):
     from app.routes.library import library_bp
     from app.routes.downloads import downloads_bp
     from app.routes.uploads import uploads_bp
+    from app.routes.system import system_bp
     app.register_blueprint(library_bp, url_prefix='/api')
     app.register_blueprint(downloads_bp, url_prefix='/api')
     app.register_blueprint(uploads_bp, url_prefix='/api')
+    app.register_blueprint(system_bp, url_prefix='/api/system')
 
     # ── SPA entry point ─────────────────────────────────────────────
     @app.route('/')
