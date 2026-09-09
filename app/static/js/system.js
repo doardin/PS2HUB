@@ -58,60 +58,18 @@ const PS2System = (() => {
             if(els.diskBar) els.diskBar.style.width = `${data.disk.percent}%`;
             if(els.diskDetail) els.diskDetail.textContent = `${formatBytes(data.disk.used)} / ${formatBytes(data.disk.total)}`;
             
-            updateBadge(els.svcSmbd, data.services.smbd);
             updateBadge(els.svcAria2c, data.services.aria2c);
             
         } catch (error) {
             console.error('Error fetching system stats:', error);
-            updateBadge(els.svcSmbd, false);
             updateBadge(els.svcAria2c, false);
         }
-    }
-
-    // ── Service control ────────────────────────────────────────────
-    async function controlService(serviceName, action, btn) {
-        // Disable all buttons for this service while working
-        const row = btn.closest('.service-item');
-        const buttons = row.querySelectorAll('.svc-btn');
-        buttons.forEach(b => b.disabled = true);
-        btn.classList.add('svc-btn--loading');
-
-        try {
-            const resp = await fetch(`/api/system/service/${serviceName}/${action}`, {
-                method: 'POST'
-            });
-            const data = await resp.json();
-
-            if (!data.ok) {
-                console.error('Service control error:', data.error);
-            }
-
-            // Refresh stats immediately to update badge
-            await fetchSystemStats();
-
-        } catch (err) {
-            console.error('Service control failed:', err);
-        } finally {
-            buttons.forEach(b => b.disabled = false);
-            btn.classList.remove('svc-btn--loading');
-        }
-    }
-
-    function bindServiceButtons() {
-        document.querySelectorAll('.svc-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const service = btn.dataset.service;
-                const action = btn.dataset.action;
-                controlService(service, action, btn);
-            });
-        });
     }
 
     function init() {
         if (document.getElementById('section-system')) {
             fetchSystemStats();
             setInterval(fetchSystemStats, POLL_INTERVAL);
-            bindServiceButtons();
         }
     }
 
