@@ -1,5 +1,6 @@
 # PS2 Hub
 
+![PS2 Hub Screenshot](screenshot1.png)
 Um gerenciador web completo para organizar e gerenciar seus jogos e arquivos do PlayStation 2 via rede (SMB/OPL). 
 **Atenção:** No momento, este projeto oferece suporte **somente para ambientes Linux (Ubuntu/Debian)**.
 
