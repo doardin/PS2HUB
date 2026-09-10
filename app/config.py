@@ -10,7 +10,12 @@ class Config:
     """
 
     # ── Base directory ──────────────────────────────────────────────
-    PS2_ROOT = os.environ.get('PS2_ROOT', '/srv/ps2')
+    # Default to /srv/ps2 on Linux/Mac, but use local 'data' folder on Windows
+    _default_root = '/srv/ps2'
+    if os.name == 'nt' or not os.path.exists('/srv/ps2'):
+        _default_root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
+
+    PS2_ROOT = os.environ.get('PS2_ROOT', _default_root)
 
     # ── OPL directory structure ─────────────────────────────────────
     DVD_DIR = os.path.join(PS2_ROOT, 'DVD')

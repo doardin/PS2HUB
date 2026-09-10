@@ -183,6 +183,29 @@ const PS2Downloads = (() => {
         } catch (err) {}
     }
 
+    async function retryExtraction(gid) {
+        const password = prompt('Digite a senha (deixe em branco se não houver):');
+        if (password === null) return; // cancelled
+
+        try {
+            const res = await fetch(`/api/extractions/${gid}/retry`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                alert(data.error || 'Erro ao retentar');
+                return;
+            }
+
+            refreshDownloads();
+        } catch (err) {
+            alert('Falha de rede ao retentar');
+        }
+    }
+
     // ── Render ─────────────────────────────────────────────────
     function renderDownloads(downloads) {
         const list = $('#downloads-list');
@@ -211,12 +234,20 @@ const PS2Downloads = (() => {
 
             let detailsHtml = '';
             if (isDownloading || isPaused) {
-                detailsHtml = `
-                    <span>${progressPercent.toFixed(1)}% • ${dl.completed_human} / ${dl.total_human}</span>
-                    <span>${dl.speed_human}${dl.eta ? ` • ~${dl.eta}` : ''}</span>
-                `;
+                if (dl.isExtraction) {
+                    detailsHtml = `<span>${dl.speed_human}</span>`;
+                } else {
+                    detailsHtml = `
+                        <span>${progressPercent.toFixed(1)}% • ${dl.completed_human} / ${dl.total_human}</span>
+                        <span>${dl.speed_human}${dl.eta ? ` • ~${dl.eta}` : ''}</span>
+                    `;
+                }
             } else if (isComplete) {
-                detailsHtml = `<span>${dl.total_human}</span><span>Pronto para processar</span>`;
+                if (dl.isExtraction) {
+                    detailsHtml = `<span>Importação concluída com sucesso</span>`;
+                } else {
+                    detailsHtml = `<span>${dl.total_human}</span><span>Pronto para processar</span>`;
+                }
             } else if (isError) {
                 detailsHtml = `<span class="dl-error-msg">${dl.error || 'Erro desconhecido'}</span>`;
             }
@@ -225,6 +256,9 @@ const PS2Downloads = (() => {
             if (dl.isExtraction) {
                 if (isComplete || isError) {
                     actionsHtml = `<button class="dl-action dl-action--cancel" onclick="PS2Downloads.dismissExtraction('${dl.gid}')">Ocultar</button>`;
+                    if (isError) {
+                        actionsHtml = `<button class="dl-action dl-action--retry" onclick="PS2Downloads.retryExtraction('${dl.gid}')">Retentar</button>` + actionsHtml;
+                    }
                 }
             } else {
                 if (isDownloading) {
@@ -347,5 +381,6 @@ const PS2Downloads = (() => {
         cancel: cancelDownload,
         refresh: refreshDownloads,
         dismissExtraction: dismissExtraction,
+        retryExtraction: retryExtraction,
     };
 })();

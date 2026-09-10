@@ -26,6 +26,14 @@ def _save_password(gid, password):
     with open(_PWD_FILE, 'w') as f:
         json.dump(pwds, f)
 
+def _get_password(gid):
+    try:
+        with open(_PWD_FILE, 'r') as f:
+            return json.load(f).get(gid)
+    except (OSError, ValueError):
+        return None
+
+
 def _pop_password(gid):
     if not os.path.exists(_PWD_FILE): return None
     try:
@@ -87,7 +95,13 @@ def list_downloads():
 
     try:
         raw_downloads = aria2.list_all()
-        downloads = [format_download(d) for d in raw_downloads]
+        # Extraction tasks are displayed by /extractions. Keep the aria2
+        # result for recovery, without showing the same download twice.
+        from app.services.extractor import EXTRACTION_TASKS
+        downloads = [
+            format_download(d) for d in raw_downloads
+            if d.get('gid') not in EXTRACTION_TASKS
+        ]
 
         return jsonify({
             'downloads': downloads,
@@ -191,13 +205,17 @@ def process_download(gid):
     art_dir = current_app.config['ART_DIR']
 
     if is_archive(filepath):
-        password = _pop_password(gid)
-        start_extraction(gid, filepath, dvd_dir, cd_dir, art_dir, current_app._get_current_object(), password=password)
-        
-        try:
+        password = _get_password(gid)
+
+        def cleanup_download():
             aria2.remove(gid)
-        except Aria2Error:
-            pass
+            _remove_password(gid)
+
+        start_extraction(
+            gid, filepath, dvd_dir, cd_dir, art_dir,
+            current_app._get_current_object(),
+            password=password, on_success=cleanup_download,
+        )
 
         return jsonify({
             'message': 'Download concluído. Extração em segundo plano iniciada.',

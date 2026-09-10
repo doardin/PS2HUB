@@ -9,6 +9,7 @@ ARCHIVE_EXTENSIONS = {'.zip', '.7z', '.rar'}
 
 # Global store for active extraction tasks
 EXTRACTION_TASKS = {}
+_TASKS_LOCK = threading.Lock()
 
 def is_archive(filename):
     """Check if the filename has an archive extension."""
@@ -16,10 +17,17 @@ def is_archive(filename):
     return ext in ARCHIVE_EXTENSIONS
 
 
-def _extract_and_process_task(task_id, filepath, dvd_dir, cd_dir, art_dir, app_context, password=None):
+def _extract_and_process_task(task_id, filepath, dvd_dir, cd_dir, art_dir, app_context, password=None, on_success=None):
     """Background task to extract the archive and process the ISO inside."""
     with app_context():
-        EXTRACTION_TASKS[task_id] = {'status': 'extracting', 'message': 'Procurando ISO na pasta...', 'error': None, 'filename': os.path.basename(filepath)}
+        if task_id not in EXTRACTION_TASKS:
+            EXTRACTION_TASKS[task_id] = {}
+        EXTRACTION_TASKS[task_id].update({
+            'status': 'extracting', 
+            'message': 'Procurando ISO na pasta...', 
+            'error': None, 
+            'filename': os.path.basename(filepath)
+        })
         print(f"[Extractor] Iniciando extração de {filepath} (Task ID: {task_id})...")
         
         try:
@@ -52,7 +60,6 @@ def _extract_and_process_task(task_id, filepath, dvd_dir, cd_dir, art_dir, app_c
                 EXTRACTION_TASKS[task_id]['status'] = 'error'
                 EXTRACTION_TASKS[task_id]['error'] = msg
                 print(f"[Extractor] Erro: {msg}")
-                os.remove(filepath)
                 return
 
             print(f"[Extractor] ISO encontrada: {largest_file} ({largest_size} bytes)")
@@ -76,7 +83,6 @@ def _extract_and_process_task(task_id, filepath, dvd_dir, cd_dir, art_dir, app_c
                 EXTRACTION_TASKS[task_id]['status'] = 'error'
                 EXTRACTION_TASKS[task_id]['error'] = 'Falha na extração (senha incorreta ou arquivo corrompido)'
                 print(f"[Extractor] Erro crítico: O arquivo não foi extraído.")
-                os.remove(filepath)
                 return
 
             print(f"[Extractor] Arquivo extraído com sucesso. Processando...")
@@ -84,11 +90,26 @@ def _extract_and_process_task(task_id, filepath, dvd_dir, cd_dir, art_dir, app_c
             EXTRACTION_TASKS[task_id]['message'] = 'Processando e movendo...'
 
             # 3. Process the extracted ISO just like a normal upload
-            process_iso(extracted_path, dvd_dir, cd_dir, art_dir)
+            result = process_iso(extracted_path, dvd_dir, cd_dir, art_dir)
+            if not result or not os.path.isfile(result.get('path', '')):
+                raise ValueError('Não foi possível confirmar a importação da ISO. O arquivo compactado foi preservado.')
             
             print(f"[Extractor] Concluído processamento de {largest_file}")
             EXTRACTION_TASKS[task_id]['status'] = 'complete'
             EXTRACTION_TASKS[task_id]['message'] = 'Processamento concluído com sucesso'
+
+            # Only discard the source after the imported game exists in the library.
+            try:
+                os.remove(filepath)
+            except OSError as e:
+                print(f"[Extractor] Jogo importado, mas não foi possível remover o compactado: {e}")
+
+            # Download metadata must survive failures so extraction can be retried.
+            if on_success:
+                try:
+                    on_success()
+                except Exception as e:
+                    print(f"[Extractor] Jogo importado, mas a limpeza do download falhou: {e}")
 
         except subprocess.CalledProcessError as e:
             err_msg = e.stderr or e.stdout
@@ -99,22 +120,35 @@ def _extract_and_process_task(task_id, filepath, dvd_dir, cd_dir, art_dir, app_c
             print(f"[Extractor] Erro fatal durante a extração: {e}")
             EXTRACTION_TASKS[task_id]['status'] = 'error'
             EXTRACTION_TASKS[task_id]['error'] = str(e)
-        finally:
-            # 4. Clean up original archive
-            if os.path.exists(filepath):
-                try:
-                    os.remove(filepath)
-                except OSError:
-                    pass
 
 
-def start_extraction(task_id, filepath, dvd_dir, cd_dir, art_dir, app, password=None):
-    """Start the background thread to extract the archive."""
-    EXTRACTION_TASKS[task_id] = {'status': 'waiting', 'message': 'Na fila...', 'error': None, 'filename': os.path.basename(filepath)}
-    thread = threading.Thread(
-        target=_extract_and_process_task, 
-        args=(task_id, filepath, dvd_dir, cd_dir, art_dir, app.app_context, password)
-    )
-    thread.daemon = True
-    thread.start()
+def start_extraction(task_id, filepath, dvd_dir, cd_dir, art_dir, app, password=None, on_success=None):
+    """Start extraction once per task; failed tasks may be retried."""
+    # Retained aria2 results can be requested again by another browser/poll.
+    with _TASKS_LOCK:
+        existing = EXTRACTION_TASKS.get(task_id)
+        if existing and existing['status'] in ('waiting', 'extracting', 'processing', 'complete'):
+            return task_id
+        EXTRACTION_TASKS[task_id] = {
+            'status': 'waiting', 
+            'message': 'Na fila...', 
+            'error': None, 
+            'filename': os.path.basename(filepath),
+            '_filepath': filepath,
+            '_dvd_dir': dvd_dir,
+            '_cd_dir': cd_dir,
+            '_art_dir': art_dir,
+            '_on_success': on_success
+        }
+        try:
+            thread = threading.Thread(
+                target=_extract_and_process_task,
+                args=(task_id, filepath, dvd_dir, cd_dir, art_dir, app.app_context, password, on_success)
+            )
+            thread.daemon = True
+            thread.start()
+        except Exception as e:
+            EXTRACTION_TASKS[task_id]['status'] = 'error'
+            EXTRACTION_TASKS[task_id]['error'] = str(e)
+            raise
     return task_id

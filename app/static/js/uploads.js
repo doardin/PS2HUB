@@ -81,15 +81,15 @@ const PS2Uploads = (() => {
         const actionsEl = upload.el.querySelector('.dl-item__actions');
 
         if (bar) bar.style.width = `${progressPercent}%`;
-        
+
         if (statusEl) {
             statusEl.textContent = statusLabel;
-            
+
             let statusClass = 'dl-status--active';
             if (isComplete) statusClass = 'dl-status--complete';
             if (isError) statusClass = 'dl-status--error';
             if (isWarning) statusClass = 'dl-status--waiting';
-            
+
             statusEl.className = `dl-status ${statusClass}`;
         }
 
@@ -103,14 +103,19 @@ const PS2Uploads = (() => {
 
         if (isComplete || isError || isWarning) {
             upload.el.classList.remove('dl-item--active');
-            
+
             if (isComplete) upload.el.classList.add('dl-item--complete');
             else if (isError) upload.el.classList.add('dl-item--error');
             else if (isWarning) upload.el.style.borderColor = 'rgba(255, 171, 0, 0.4)';
-            
+
             // Allow dismissing
             if (actionsEl) {
+                let retryHtml = '';
+                if (isError && upload.taskId) {
+                    retryHtml = `<button class="dl-action dl-action--retry" onclick="PS2Uploads.retryExtraction('${id}', '${upload.taskId}')">Tentar novamente</button>`;
+                }
                 actionsEl.innerHTML = `
+                    ${retryHtml}
                     <button class="dl-action dl-action--cancel" onclick="PS2Uploads.dismiss('${id}')">
                         Ocultar
                     </button>
@@ -177,7 +182,7 @@ const PS2Uploads = (() => {
 
             // Generate a local ID for UI tracking before the server assigns one
             const localId = 'local_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-            
+
             const uploadInfo = {
                 id: localId,
                 file: file,
@@ -212,7 +217,7 @@ const PS2Uploads = (() => {
 
         // 1. Initialize
         updateUploadUI(upload.id, 0, 0, 0, 'Iniciando...');
-        
+
         let initData;
         try {
             initData = await PS2Hub.api('/uploads/init', {
@@ -230,7 +235,7 @@ const PS2Uploads = (() => {
         upload.serverUploadId = initData.uploadId;
         const chunkSize = initData.chunkSize || DEFAULT_CHUNK_SIZE;
         const totalChunks = Math.ceil(file.size / chunkSize);
-        
+
         let uploadedBytes = 0;
         let speedEma = 0; // Exponential Moving Average for speed
         const alpha = 0.3; // Smoothing factor
@@ -270,14 +275,14 @@ const PS2Uploads = (() => {
             }
 
             uploadedBytes += chunk.size;
-            
+
             // Calculate speed
             const now = performance.now();
             const elapsedMs = now - startTime;
             // Prevent division by zero if it's too fast (< 1ms)
             const safeMs = Math.max(elapsedMs, 1);
             const currentSpeed = (chunk.size / safeMs) * 1000;
-            
+
             if (speedEma === 0) {
                 speedEma = currentSpeed;
             } else {
@@ -306,14 +311,14 @@ const PS2Uploads = (() => {
                 updateUploadUI(upload.id, 100, file.size, 0, 'Extraindo...', false, false, true);
                 const speedEl = upload.el.querySelector(`#upload-speed-${upload.id}`);
                 if (speedEl) speedEl.textContent = 'Na fila...';
-                
+
                 if (!tasksPollInterval) {
                     tasksPollInterval = setInterval(pollTasks, 2000);
                 }
             } else {
                 updateUploadUI(upload.id, 100, file.size, 0, 'Concluído', true);
             }
-            
+
             // Refresh library
             if (typeof PS2Library !== 'undefined') {
                 PS2Library.loadLibrary();
@@ -354,10 +359,43 @@ const PS2Uploads = (() => {
         const upload = activeUploads.get(id);
         if (upload && upload.el) {
             if (upload.taskId) {
-                fetch(`/api/extractions/${upload.taskId}`, { method: 'DELETE' }).catch(() => {});
+                fetch(`/api/extractions/${upload.taskId}`, { method: 'DELETE' }).catch(() => { });
             }
             upload.el.remove();
             activeUploads.delete(id);
+        }
+    }
+
+    async function retryExtraction(localId, taskId) {
+        const password = prompt('Digite a senha (deixe em branco se não houver):');
+        if (password === null) return; // cancelled
+
+        try {
+            const res = await fetch(`/api/extractions/${taskId}/retry`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                alert(data.error || 'Erro ao retentar');
+                return;
+            }
+
+            const upload = activeUploads.get(localId);
+            if (upload) {
+                upload.isError = false;
+                updateUploadUI(localId, upload.progress, 0, 0, 'Extraindo...', false, false, true);
+                const speedEl = upload.el.querySelector(`#upload-speed-${localId}`);
+                if (speedEl) speedEl.textContent = 'Na fila...';
+
+                if (!tasksPollInterval) {
+                    tasksPollInterval = setInterval(pollTasks, 2000);
+                }
+            }
+        } catch (err) {
+            alert('Falha de rede ao retentar');
         }
     }
 
@@ -394,7 +432,7 @@ const PS2Uploads = (() => {
         dropzone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropzone.classList.remove('upload-zone--active');
-            
+
             if (e.dataTransfer.files.length > 0) {
                 processFiles(e.dataTransfer.files);
             }
@@ -409,6 +447,7 @@ const PS2Uploads = (() => {
 
     return {
         cancel: cancelUpload,
-        dismiss: dismissUpload
+        dismiss: dismissUpload,
+        retryExtraction: retryExtraction
     };
 })();

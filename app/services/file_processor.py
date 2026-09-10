@@ -98,6 +98,12 @@ def process_iso(filepath, dvd_dir, cd_dir, art_dir=None):
 
     # Get original filename parts
     original_name = os.path.basename(filepath)
+    # Strip UUID prefix if present (added during chunked uploads)
+    original_name = re.sub(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_', 
+        '', original_name, flags=re.IGNORECASE
+    )
+    
     name_without_ext, ext = os.path.splitext(original_name)
     ext = ext.lower()
 

@@ -142,8 +142,8 @@ def complete_upload(upload_id):
             else:
                 return jsonify({'error': 'Falha ao processar a ISO'}), 500
     except Exception as e:
-        # Only cleanup on synchronous failure
-        if os.path.exists(final_path):
+        # Preserve archives even when the background worker cannot start.
+        if not is_archive(final_path) and os.path.exists(final_path):
             os.remove(final_path)
         return jsonify({'error': str(e)}), 500
 
