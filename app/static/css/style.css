@@ -1491,6 +1491,10 @@ input {
     cursor: pointer;
     transition: all var(--transition-base);
 }
+.sort-select option {
+    background: #0f172a;
+    color: #a0aec0;
+}
 .sort-select:hover, .sort-select:focus {
     border-color: rgba(41, 121, 255, 0.5);
     color: #fff;
@@ -1524,8 +1528,9 @@ input {
 }
 
 .btn--scan {
-    width: 160px;
+    width: 48px;
     height: 48px;
+    padding: 0;
     justify-content: center;
     font-weight: 500;
     font-size: 0.95rem;
@@ -1649,8 +1654,8 @@ input {
     font-weight: 700;
     padding: 2px 6px;
     border-radius: var(--radius-sm);
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-secondary);
+    background: rgba(41, 121, 255, 0.15);
+    color: #00d4ff;
 }
 
 .game-card__serial-badge {

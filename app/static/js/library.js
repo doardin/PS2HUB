@@ -110,7 +110,6 @@ const PS2Library = (() => {
                     <div class="game-card__meta">
                         <div class="game-card__meta-left">
                             ${serialDisplay ? `<span class="game-card__serial-badge">${escapeHtml(serialDisplay)}</span>` : '<span></span>'}
-                            <span class="game-card__badge game-card__type ${typeClass}">${game.type}</span>
                         </div>
                         <div class="game-card__actions">
                             <button class="game-card__actions-btn" aria-label="Ações do jogo" aria-expanded="false" aria-controls="menu-${index}">
