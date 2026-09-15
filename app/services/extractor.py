@@ -1,4 +1,4 @@
-"""Background extraction service for compressed ISOs using unrar/7z."""
+"""Background extraction service for compressed ISOs using unar/7z."""
 import os
 import shutil
 import subprocess
@@ -30,8 +30,8 @@ def _has_command(cmd):
         return False
 
 
-def _extract_with_unrar(filepath, work_dir, password=None):
-    """Extract ISO files from a RAR archive using unrar.
+def _extract_with_unar(filepath, work_dir, password=None):
+    """Extract ISO files from a RAR archive using unar.
     
     Returns list of newly extracted file paths.
     """
@@ -41,23 +41,21 @@ def _extract_with_unrar(filepath, work_dir, password=None):
         if os.path.isfile(os.path.join(work_dir, f)):
             before.add(f)
 
-    # unrar 'e' extracts without paths (flattens), '-o+' overwrites, '-y' yes to all
-    cmd = ['unrar', 'e', '-y', '-o+']
+    # unar: -D = no containing directory (flat), -f = force overwrite
+    cmd = ['unar', '-D', '-f']
     if password:
-        cmd.append(f'-p{password}')
-    else:
-        cmd.append('-p-')  # no password prompt
-    cmd.extend([filepath, work_dir + '/'])
+        cmd.extend(['-p', password])
+    cmd.extend(['-o', work_dir, filepath])
 
-    print(f"[Extractor] unrar cmd: {' '.join(cmd)}")
+    print(f"[Extractor] unar cmd: {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=True, text=True)
-    print(f"[Extractor] unrar exit code: {result.returncode}")
+    print(f"[Extractor] unar exit code: {result.returncode}")
     if result.stdout:
-        print(f"[Extractor] unrar stdout (last 500): {result.stdout[-500:]}")
+        print(f"[Extractor] unar stdout (last 500): {result.stdout[-500:]}")
     if result.stderr:
-        print(f"[Extractor] unrar stderr: {result.stderr[-500:]}")
+        print(f"[Extractor] unar stderr: {result.stderr[-500:]}")
 
-    # unrar returns 0 on success, but may also return non-zero for warnings
+    # unar returns 0 on success, but may also return non-zero for warnings
     # We check for extracted files instead of relying solely on return code
 
     # Find new files
@@ -105,7 +103,7 @@ def _extract_with_7z(filepath, work_dir, password=None):
     # Check for "Unsupported Method" error → can't be fixed with 7z
     combined_output = (result.stderr or '') + (result.stdout or '')
     if 'Unsupported Method' in combined_output:
-        raise RuntimeError(f"7z: Método de compressão não suportado. Instale o unrar: sudo apt install unrar")
+        raise RuntimeError(f"7z: Método de compressão não suportado. Instale o unar: sudo apt install unar")
 
     if result.returncode != 0:
         raise subprocess.CalledProcessError(result.returncode, cmd, result.stdout, result.stderr)
@@ -150,31 +148,31 @@ def _scan_new_isos(work_dir, before_set, cleanup_others=False):
 def _extract_archive(filepath, work_dir, password=None):
     """Extract ISOs from an archive, choosing the right tool.
     
-    Uses unrar for .rar files, 7z for .zip/.7z.
+    Uses unar for .rar files, 7z for .zip/.7z.
     Falls back between tools if the primary one fails.
     
     Returns list of (full_path, filename, size) tuples.
     """
     ext = os.path.splitext(filepath)[1].lower()
-    has_unrar = _has_command('unrar')
+    has_unar = _has_command('unar')
     has_7z = _has_command('7z')
 
-    if not has_unrar and not has_7z:
-        raise RuntimeError("Nenhum descompactador encontrado. Instale: sudo apt install unrar p7zip-full")
+    if not has_unar and not has_7z:
+        raise RuntimeError("Nenhum descompactador encontrado. Instale: sudo apt install unar p7zip-full")
 
     errors = []
 
     if ext == '.rar':
-        # Prefer unrar for RAR files (full RAR5 support)
-        if has_unrar:
+        # Prefer unar for RAR files (full RAR5 support)
+        if has_unar:
             try:
-                result = _extract_with_unrar(filepath, work_dir, password)
+                result = _extract_with_unar(filepath, work_dir, password)
                 if result:
                     return result
-                print("[Extractor] unrar: nenhuma ISO encontrada")
+                print("[Extractor] unar: nenhuma ISO encontrada")
             except Exception as e:
-                errors.append(f"unrar: {e}")
-                print(f"[Extractor] unrar falhou: {e}")
+                errors.append(f"unar: {e}")
+                print(f"[Extractor] unar falhou: {e}")
 
         # Fallback to 7z
         if has_7z:
@@ -198,14 +196,14 @@ def _extract_archive(filepath, work_dir, password=None):
                 errors.append(f"7z: {e}")
                 print(f"[Extractor] 7z falhou: {e}")
 
-        # Fallback to unrar (only works for RAR, but won't hurt to try)
-        if has_unrar and ext == '.rar':
+        # Fallback to unar (only works for RAR, but won't hurt to try)
+        if has_unar and ext == '.rar':
             try:
-                result = _extract_with_unrar(filepath, work_dir, password)
+                result = _extract_with_unar(filepath, work_dir, password)
                 if result:
                     return result
             except Exception as e:
-                errors.append(f"unrar: {e}")
+                errors.append(f"unar: {e}")
 
     if errors:
         raise RuntimeError(f"Falha na extração: {'; '.join(errors)}")

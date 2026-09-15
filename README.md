@@ -29,7 +29,7 @@ sudo apt install python3 python3-pip python3-venv
 sudo apt install aria2
 
 # Instale o p7zip (usado para descompactar .7z, .rar e .zip)
-sudo apt install p7zip-full unrar
+sudo apt install p7zip-full unar
 ```
 
 ---

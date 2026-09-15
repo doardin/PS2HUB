@@ -141,17 +141,20 @@ def process_iso(filepath, dvd_dir, cd_dir, art_dir=None):
 
     target_path = os.path.join(target_dir, new_filename)
 
-    # Avoid overwriting existing files
-    if os.path.exists(target_path):
-        base = os.path.splitext(new_filename)[0]
-        counter = 1
-        while os.path.exists(target_path):
-            target_path = os.path.join(target_dir, f'{base} ({counter}){ext}')
-            counter += 1
+    # Avoid overwriting existing files (skip if source == target)
+    if os.path.abspath(filepath) == os.path.abspath(target_path):
+        pass  # File is already in the right place with the right name
+    else:
+        if os.path.exists(target_path):
+            base = os.path.splitext(new_filename)[0]
+            counter = 1
+            while os.path.exists(target_path):
+                target_path = os.path.join(target_dir, f'{base} ({counter}){ext}')
+                counter += 1
 
-    # Move file
-    os.makedirs(target_dir, exist_ok=True)
-    shutil.move(filepath, target_path)
+        # Move file
+        os.makedirs(target_dir, exist_ok=True)
+        shutil.move(filepath, target_path)
 
     # Download cover art in the background (best-effort)
     if serial and art_dir:
