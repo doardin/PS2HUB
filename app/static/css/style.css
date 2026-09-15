@@ -1203,6 +1203,122 @@ input {
     box-shadow: 0 4px 12px rgba(229, 57, 53, 0.3);
 }
 
+/* ── Add Game Modal ────────────────────────────────────────── */
+.modal--add-game {
+    max-width: 520px;
+}
+
+/* Modal Tabs */
+.modal-tabs {
+    display: flex;
+    position: relative;
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 0 var(--space-lg);
+}
+
+.modal-tabs__btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    padding: var(--space-md) var(--space-sm);
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color var(--transition-fast);
+    position: relative;
+    z-index: 1;
+}
+
+.modal-tabs__btn:hover {
+    color: var(--text-primary);
+}
+
+.modal-tabs__btn--active {
+    color: var(--accent-blue);
+}
+
+.modal-tabs__btn svg {
+    opacity: 0.7;
+    transition: opacity var(--transition-fast);
+}
+
+.modal-tabs__btn--active svg {
+    opacity: 1;
+}
+
+.modal-tabs__indicator {
+    position: absolute;
+    bottom: -1px;
+    height: 2px;
+    background: var(--accent-gradient);
+    border-radius: 2px 2px 0 0;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Modal Panels */
+.modal-panel {
+    display: none;
+}
+
+.modal-panel--active {
+    display: block;
+}
+
+/* Modal Form Fields */
+.modal-field-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-xs);
+    letter-spacing: 0.02em;
+}
+
+.modal-field-label + .search {
+    margin-bottom: var(--space-md);
+}
+
+.modal-download-form .search {
+    max-width: none;
+}
+
+.modal-hint {
+    font-size: 0.8rem;
+    min-height: 1.2em;
+    margin-top: var(--space-sm);
+    transition: color var(--transition-fast);
+}
+
+.modal-hint--success { color: var(--success); }
+.modal-hint--error   { color: var(--error); }
+
+/* Modal Upload Zone Variant */
+.upload-zone--modal {
+    padding: var(--space-xl) var(--space-md);
+    margin-bottom: 0;
+}
+
+.upload-zone--modal .upload-zone__title {
+    font-size: 1rem;
+}
+
+.upload-zone--modal .upload-zone__desc {
+    font-size: 0.85rem;
+    margin-bottom: var(--space-sm);
+}
+
+/* Footer hide submit when on upload tab */
+.modal__footer .btn--primary {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
 /* ── Section Header ─────────────────────────────────────────── */
 .section__header {
     margin-bottom: var(--space-xl);

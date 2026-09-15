@@ -120,10 +120,10 @@
                     <div class="sort-select-wrapper">
                         <svg class="sort-icon-left" viewBox="0 0 24 24" width="16" height="16" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="m21 16-4 4-4-4"/>
-                            <path d="M17 20V4"/>
-                            <path d="m3 8 4-4 4 4"/>
-                            <path d="M7 4v16"/>
+                            <path d="m21 16-4 4-4-4" />
+                            <path d="M17 20V4" />
+                            <path d="m3 8 4-4 4 4" />
+                            <path d="M7 4v16" />
                         </svg>
                         <select id="sort-select" class="sort-select" aria-label="Ordenar jogos">
                             <option value="name-asc" selected>Nome A–Z</option>
@@ -427,6 +427,118 @@
                 <div class="modal__footer">
                     <button class="btn btn--secondary" id="delete-modal-cancel">Cancelar</button>
                     <button class="btn btn--danger" id="delete-modal-confirm">Apagar Jogo</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Adicionar Jogo -->
+        <div class="modal-backdrop" id="add-game-modal" hidden>
+            <div class="modal modal--add-game">
+                <div class="modal__header">
+                    <h3 class="modal__title">Adicionar Jogo</h3>
+                    <button class="modal__close" id="add-game-modal-close" title="Fechar">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Tabs dentro do modal -->
+                <div class="modal-tabs">
+                    <button class="modal-tabs__btn modal-tabs__btn--active" data-modal-tab="modal-download"
+                        id="modal-tab-download">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                        </svg>
+                        <span>Baixar por URL</span>
+                    </button>
+                    <button class="modal-tabs__btn" data-modal-tab="modal-upload" id="modal-tab-upload">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                        <span>Upload de Arquivo</span>
+                    </button>
+                    <div class="modal-tabs__indicator" id="modal-tabs-indicator"></div>
+                </div>
+
+                <!-- Painel: Baixar por URL -->
+                <div class="modal__body modal-panel modal-panel--active" id="modal-panel-modal-download">
+                    <div class="modal-download-form">
+                        <label class="modal-field-label">URL do arquivo</label>
+                        <div class="search modal-url-field">
+                            <svg class="search__icon" viewBox="0 0 24 24" width="18" height="18" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                            </svg>
+                            <input class="search__input" type="url" placeholder="Cole a URL do arquivo..."
+                                id="modal-download-url" autocomplete="off">
+                        </div>
+
+                        <label class="modal-field-label">Senha (opcional)</label>
+                        <div class="search modal-password-field">
+                            <svg class="search__icon" viewBox="0 0 24 24" width="18" height="18" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                            <input class="search__input" type="text" placeholder="Senha para extração..."
+                                id="modal-download-password" autocomplete="off">
+                        </div>
+
+                        <p class="modal-hint" id="modal-download-hint"></p>
+                    </div>
+                </div>
+
+                <!-- Painel: Upload de Arquivo -->
+                <div class="modal__body modal-panel" id="modal-panel-modal-upload">
+                    <label class="modal-field-label">Senha para extração (opcional)</label>
+                    <div class="search modal-password-field" style="margin-bottom: var(--space-md);">
+                        <svg class="search__icon" viewBox="0 0 24 24" width="18" height="18" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <input class="search__input" type="text" placeholder="Senha para extração..."
+                            id="modal-upload-password" autocomplete="off">
+                    </div>
+
+                    <div class="upload-zone upload-zone--modal" id="modal-upload-zone">
+                        <input type="file" id="modal-upload-input" accept=".iso,.bin,.img,.zip,.7z,.rar" multiple
+                            hidden>
+                        <div class="upload-zone__content">
+                            <svg class="upload-zone__icon" viewBox="0 0 24 24" width="40" height="40" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                            <h3 class="upload-zone__title">Arraste suas ISOs para cá</h3>
+                            <p class="upload-zone__desc">ou clique para selecionar arquivos</p>
+                            <span class="upload-zone__hint">.iso, .bin, .img, .zip, .7z, .rar</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="modal__footer" id="add-game-modal-footer">
+                    <button class="btn btn--secondary" id="add-game-modal-cancel">Cancelar</button>
+                    <button class="btn btn--primary" id="add-game-modal-submit">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        <span>Baixar</span>
+                    </button>
                 </div>
             </div>
         </div>

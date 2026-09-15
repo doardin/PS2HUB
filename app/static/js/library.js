@@ -364,15 +364,16 @@ const PS2Library = (() => {
             });
         }
 
-        // Add button (navigate to uploads tab)
+        // Add button → open modal
         const addBtn = $('#library-add-btn');
         if (addBtn) {
             addBtn.addEventListener('click', () => {
-                if(window.PS2Hub && window.PS2Hub.switchTab) {
-                    window.PS2Hub.switchTab('uploads');
-                }
+                openAddGameModal();
             });
         }
+
+        // Initialize the add-game modal
+        initAddGameModal();
 
         // Refresh button
         const refreshBtn = $('#library-refresh-btn');
@@ -384,6 +385,277 @@ const PS2Library = (() => {
 
         // Load data
         loadLibrary();
+    }
+
+    // ── Add Game Modal ────────────────────────────────────────
+    let activeModalTab = 'modal-download';
+
+    function openAddGameModal() {
+        const modal = $('#add-game-modal');
+        if (!modal) return;
+        modal.hidden = false;
+
+        // Reset state
+        const urlInput = $('#modal-download-url');
+        const pwdInput = $('#modal-download-password');
+        const uploadPwdInput = $('#modal-upload-password');
+        const hint = $('#modal-download-hint');
+        if (urlInput) urlInput.value = '';
+        if (pwdInput) pwdInput.value = '';
+        if (uploadPwdInput) uploadPwdInput.value = '';
+        if (hint) { hint.textContent = ''; hint.className = 'modal-hint'; }
+
+        // Reset to download tab
+        switchModalTab('modal-download');
+
+        // Focus URL input after animation
+        setTimeout(() => {
+            if (urlInput) urlInput.focus();
+        }, 100);
+    }
+
+    function closeAddGameModal() {
+        const modal = $('#add-game-modal');
+        if (modal) modal.hidden = true;
+    }
+
+    function switchModalTab(tabName) {
+        activeModalTab = tabName;
+
+        // Update tab buttons
+        document.querySelectorAll('.modal-tabs__btn').forEach(btn => {
+            btn.classList.toggle('modal-tabs__btn--active', btn.dataset.modalTab === tabName);
+        });
+
+        // Update panels
+        document.querySelectorAll('.modal-panel').forEach(panel => {
+            panel.classList.toggle('modal-panel--active', panel.id === `modal-panel-${tabName}`);
+        });
+
+        // Update indicator
+        updateModalIndicator();
+
+        // Update footer button
+        const submitBtn = $('#add-game-modal-submit');
+        if (submitBtn) {
+            if (tabName === 'modal-download') {
+                submitBtn.style.display = '';
+                submitBtn.querySelector('span').textContent = 'Baixar';
+            } else {
+                // Hide submit on upload tab (upload zone handles it)
+                submitBtn.style.display = 'none';
+            }
+        }
+    }
+
+    function updateModalIndicator() {
+        const activeBtn = document.querySelector(`.modal-tabs__btn[data-modal-tab="${activeModalTab}"]`);
+        const indicator = $('#modal-tabs-indicator');
+        if (!activeBtn || !indicator) return;
+
+        const rect = activeBtn.getBoundingClientRect();
+        const parentRect = activeBtn.parentElement.getBoundingClientRect();
+
+        indicator.style.left = `${rect.left - parentRect.left}px`;
+        indicator.style.width = `${rect.width}px`;
+    }
+
+    async function handleModalDownload() {
+        const urlInput = $('#modal-download-url');
+        const pwdInput = $('#modal-download-password');
+        const hint = $('#modal-download-hint');
+        const url = urlInput ? urlInput.value.trim() : '';
+        const password = pwdInput ? pwdInput.value.trim() : '';
+
+        if (!url) {
+            showModalHint('Cole uma URL para baixar', 'error');
+            if (urlInput) urlInput.focus();
+            return;
+        }
+
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            showModalHint('Apenas URLs HTTP/HTTPS são permitidas', 'error');
+            return;
+        }
+
+        const submitBtn = $('#add-game-modal-submit');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.querySelector('span').textContent = 'Adicionando...';
+        }
+
+        try {
+            await PS2Hub.api('/downloads', {
+                method: 'POST',
+                body: JSON.stringify({ url, password }),
+            });
+
+            showModalHint('Download adicionado com sucesso!', 'success');
+
+            // Close modal after a brief delay so user sees the success message
+            setTimeout(() => {
+                closeAddGameModal();
+                // Switch to downloads tab to show progress
+                if (window.PS2Hub && window.PS2Hub.switchTab) {
+                    window.PS2Hub.switchTab('downloads');
+                }
+            }, 800);
+        } catch (err) {
+            showModalHint('Erro ao adicionar download', 'error');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.querySelector('span').textContent = 'Baixar';
+            }
+        }
+    }
+
+    function handleModalUpload(files) {
+        if (!files || files.length === 0) return;
+
+        const ALLOWED_EXTENSIONS = ['.iso', '.bin', '.img', '.zip', '.7z', '.rar'];
+
+        // Copy password to the main upload password field so PS2Uploads picks it up
+        const modalPwd = $('#modal-upload-password');
+        const mainPwd = $('#upload-password-input');
+        if (modalPwd && mainPwd) {
+            mainPwd.value = modalPwd.value;
+        }
+
+        // Validate extensions
+        const validFiles = [];
+        for (const file of files) {
+            const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+            if (!ALLOWED_EXTENSIONS.includes(ext)) {
+                alert(`Formato não suportado: ${file.name}\nApenas ISO, BIN, IMG, ZIP, 7Z ou RAR.`);
+                continue;
+            }
+            validFiles.push(file);
+        }
+
+        if (validFiles.length === 0) return;
+
+        // Close modal
+        closeAddGameModal();
+
+        // Switch to uploads tab and trigger the upload
+        if (window.PS2Hub && window.PS2Hub.switchTab) {
+            window.PS2Hub.switchTab('uploads');
+        }
+
+        // Use the existing PS2Uploads module to process the files
+        // We need to access PS2Uploads' processFiles, but it's internal.
+        // Instead, we programmatically set the main upload input files and trigger change.
+        const mainUploadInput = $('#upload-input');
+        if (mainUploadInput) {
+            // Create a DataTransfer to set files on the input
+            const dt = new DataTransfer();
+            validFiles.forEach(f => dt.items.add(f));
+            mainUploadInput.files = dt.files;
+            mainUploadInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+
+    function showModalHint(message, type = 'info') {
+        const hint = $('#modal-download-hint');
+        if (!hint) return;
+        hint.textContent = message;
+        hint.className = `modal-hint modal-hint--${type}`;
+        clearTimeout(hint._timer);
+        hint._timer = setTimeout(() => {
+            hint.textContent = '';
+            hint.className = 'modal-hint';
+        }, 5000);
+    }
+
+    function initAddGameModal() {
+        // Tab buttons
+        document.querySelectorAll('.modal-tabs__btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                switchModalTab(btn.dataset.modalTab);
+            });
+        });
+
+        // Close buttons
+        const closeBtn = $('#add-game-modal-close');
+        const cancelBtn = $('#add-game-modal-cancel');
+        if (closeBtn) closeBtn.addEventListener('click', closeAddGameModal);
+        if (cancelBtn) cancelBtn.addEventListener('click', closeAddGameModal);
+
+        // Backdrop click to close
+        const backdrop = $('#add-game-modal');
+        if (backdrop) {
+            backdrop.addEventListener('click', (e) => {
+                if (e.target === backdrop) closeAddGameModal();
+            });
+        }
+
+        // Escape key to close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = $('#add-game-modal');
+                if (modal && !modal.hidden) {
+                    closeAddGameModal();
+                }
+            }
+        });
+
+        // Submit button (download)
+        const submitBtn = $('#add-game-modal-submit');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', handleModalDownload);
+        }
+
+        // Enter key in URL input
+        const urlInput = $('#modal-download-url');
+        if (urlInput) {
+            urlInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleModalDownload();
+                }
+            });
+        }
+
+        // Modal upload zone
+        const modalDropzone = $('#modal-upload-zone');
+        const modalFileInput = $('#modal-upload-input');
+
+        if (modalDropzone && modalFileInput) {
+            modalDropzone.addEventListener('click', (e) => {
+                if (e.target !== modalFileInput) {
+                    modalFileInput.click();
+                }
+            });
+
+            modalFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleModalUpload(e.target.files);
+                    modalFileInput.value = '';
+                }
+            });
+
+            modalDropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                modalDropzone.classList.add('upload-zone--active');
+            });
+
+            modalDropzone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                modalDropzone.classList.remove('upload-zone--active');
+            });
+
+            modalDropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                modalDropzone.classList.remove('upload-zone--active');
+                if (e.dataTransfer.files.length > 0) {
+                    handleModalUpload(e.dataTransfer.files);
+                }
+            });
+        }
+
+        // Set initial indicator position
+        requestAnimationFrame(() => updateModalIndicator());
     }
 
     // Run when DOM is ready
