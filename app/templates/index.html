@@ -178,8 +178,8 @@
         <!-- Downloads -->
         <section class="section" id="section-downloads">
             <div class="download-form" id="download-form">
-                <div class="download-form__group" style="display: flex; gap: var(--space-sm);">
-                    <div class="search download-form__url" style="flex: 1;">
+                <div class="download-form__group">
+                    <div class="search download-form__url">
                         <svg class="search__icon" viewBox="0 0 24 24" width="18" height="18" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -188,7 +188,7 @@
                         <input class="search__input" type="url" placeholder="Cole a URL do arquivo..."
                             id="download-url-input" autocomplete="off">
                     </div>
-                    <div class="search download-form__password" style="flex: 0 1 200px;">
+                    <div class="search download-form__password">
                         <svg class="search__icon" viewBox="0 0 24 24" width="18" height="18" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
@@ -210,13 +210,11 @@
                 <p class="download-form__hint" id="download-hint"></p>
             </div>
 
-            <div class="quick-links" style="margin-bottom: var(--space-xl);">
-                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: var(--space-sm);">Bibliotecas
-                    recomendadas:</p>
-                <div style="display: flex; gap: var(--space-sm); flex-wrap: wrap;">
+            <div class="quick-links">
+                <p class="quick-links__label">Bibliotecas recomendadas:</p>
+                <div class="quick-links__list">
                     <a href="https://archive.org/download/playstation-2-games-iso" target="_blank"
-                        rel="noopener noreferrer" class="btn btn--icon"
-                        style="display: inline-flex; align-items: center; gap: var(--space-sm); text-decoration: none; padding: var(--space-sm) var(--space-md);">
+                        rel="noopener noreferrer" class="btn btn--icon quick-links__item">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -225,8 +223,7 @@
                         Archive.org (PS2 ISOs)
                     </a>
                     <a href="https://youtube.com/playlist?list=PLIBi3GwAjBsZY0h_ezIcwMBTjPLQLOE0v&si=jdzf0Ygo3B0CW_oA"
-                        target="_blank" rel="noopener noreferrer" class="btn btn--icon"
-                        style="display: inline-flex; align-items: center; gap: var(--space-sm); text-decoration: none; padding: var(--space-sm) var(--space-md);">
+                        target="_blank" rel="noopener noreferrer" class="btn btn--icon quick-links__item">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path
@@ -236,8 +233,7 @@
                         Playlist YouTube 1
                     </a>
                     <a href="https://youtube.com/playlist?list=PLIBi3GwAjBsaSX8eFQ8YeeIYUhXefjk-D&si=2npHeh_FPWyZm1Bw"
-                        target="_blank" rel="noopener noreferrer" class="btn btn--icon"
-                        style="display: inline-flex; align-items: center; gap: var(--space-sm); text-decoration: none; padding: var(--space-sm) var(--space-md);">
+                        target="_blank" rel="noopener noreferrer" class="btn btn--icon quick-links__item">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path
@@ -247,8 +243,7 @@
                         Playlist YouTube 2
                     </a>
                     <a href="https://youtube.com/playlist?list=PLIBi3GwAjBsZqsQGVl6IOxC9t89_87rH_&si=NiqFL3Pqma-pH6Tf"
-                        target="_blank" rel="noopener noreferrer" class="btn btn--icon"
-                        style="display: inline-flex; align-items: center; gap: var(--space-sm); text-decoration: none; padding: var(--space-sm) var(--space-md);">
+                        target="_blank" rel="noopener noreferrer" class="btn btn--icon quick-links__item">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path
@@ -258,8 +253,7 @@
                         Playlist YouTube 3
                     </a>
                     <a href="https://youtube.com/playlist?list=PLIBi3GwAjBsaEWNW0XTmCJEelf0zqCy7d&si=2qke2UbMB3eDuNWe"
-                        target="_blank" rel="noopener noreferrer" class="btn btn--icon"
-                        style="display: inline-flex; align-items: center; gap: var(--space-sm); text-decoration: none; padding: var(--space-sm) var(--space-md);">
+                        target="_blank" rel="noopener noreferrer" class="btn btn--icon quick-links__item">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path
@@ -269,8 +263,7 @@
                         Playlist YouTube 4
                     </a>
                     <a href="https://t.me/+bKug-jLg9X83MTAx" target="_blank" rel="noopener noreferrer"
-                        class="btn btn--icon"
-                        style="display: inline-flex; align-items: center; gap: var(--space-sm); text-decoration: none; padding: var(--space-sm) var(--space-md);">
+                        class="btn btn--icon quick-links__item">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
@@ -278,8 +271,7 @@
                         Grupo Telegram
                     </a>
                     <a href="https://dubsgamer.com/roms/playstation-2-iso/" target="_blank" rel="noopener noreferrer"
-                        class="btn btn--icon"
-                        style="display: inline-flex; align-items: center; gap: var(--space-sm); text-decoration: none; padding: var(--space-sm) var(--space-md);">
+                        class="btn btn--icon quick-links__item">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -346,13 +338,6 @@
 
         <!-- System -->
         <section class="section" id="section-system">
-            <header class="section__header">
-                <div>
-                    <h2 class="section__title">Sistema</h2>
-                    <p class="section__desc">Monitoramento de recursos em tempo real.</p>
-                </div>
-            </header>
-
             <div class="system-dashboard">
                 <div class="system-metrics">
                     <div class="metric-card">
@@ -398,6 +383,24 @@
                             </div>
                             <div class="service-controls">
                                 <span class="status-badge" id="sys-service-aria2c">Desconhecido</span>
+                                <div class="service-actions">
+                                    <button class="svc-btn svc-btn--start" id="svc-aria2c-start" title="Iniciar aria2c"
+                                        onclick="PS2System.controlService('aria2c', 'start')">
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                            stroke-linejoin="round">
+                                            <polygon points="5 3 19 12 5 21 5 3" />
+                                        </svg>
+                                    </button>
+                                    <button class="svc-btn svc-btn--stop" id="svc-aria2c-stop" title="Parar aria2c"
+                                        onclick="PS2System.controlService('aria2c', 'stop')">
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                            stroke-linejoin="round">
+                                            <rect x="6" y="6" width="12" height="12" rx="1" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

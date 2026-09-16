@@ -19,6 +19,8 @@ const PS2System = (() => {
         diskDetail: document.getElementById('sys-disk-detail'),
         svcSmbd: document.getElementById('sys-service-smbd'),
         svcAria2c: document.getElementById('sys-service-aria2c'),
+        btnAria2cStart: document.getElementById('svc-aria2c-start'),
+        btnAria2cStop: document.getElementById('svc-aria2c-stop'),
     };
 
     function formatBytes(bytes) {
@@ -40,6 +42,54 @@ const PS2System = (() => {
         }
     }
 
+    function updateServiceButtons(isRunning) {
+        if (els.btnAria2cStart) {
+            els.btnAria2cStart.disabled = isRunning;
+        }
+        if (els.btnAria2cStop) {
+            els.btnAria2cStop.disabled = !isRunning;
+        }
+    }
+
+    async function controlService(service, action) {
+        if (service !== 'aria2c') return;
+
+        // Disable both buttons during request
+        if (els.btnAria2cStart) els.btnAria2cStart.disabled = true;
+        if (els.btnAria2cStop) els.btnAria2cStop.disabled = true;
+
+        // Show loading state on badge
+        if (els.svcAria2c) {
+            els.svcAria2c.textContent = action === 'start' ? 'Iniciando...' : 'Parando...';
+            els.svcAria2c.classList.remove('status-badge--success', 'status-badge--danger');
+        }
+
+        try {
+            const response = await fetch('/api/system/services/aria2c', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                alert(data.error || 'Erro ao controlar o serviço');
+                // Refresh to get actual state
+                await fetchSystemStats();
+                return;
+            }
+
+            // Brief delay to let the daemon start/stop
+            await new Promise(r => setTimeout(r, 500));
+            await fetchSystemStats();
+        } catch (err) {
+            console.error('[System] Error controlling service:', err);
+            alert('Erro de rede ao controlar o serviço');
+            await fetchSystemStats();
+        }
+    }
+
     async function fetchSystemStats() {
         try {
             const response = await fetch('/api/system/stats');
@@ -58,11 +108,14 @@ const PS2System = (() => {
             if(els.diskBar) els.diskBar.style.width = `${data.disk.percent}%`;
             if(els.diskDetail) els.diskDetail.textContent = `${formatBytes(data.disk.used)} / ${formatBytes(data.disk.total)}`;
             
-            updateBadge(els.svcAria2c, data.services.aria2c);
+            const aria2cRunning = data.services.aria2c;
+            updateBadge(els.svcAria2c, aria2cRunning);
+            updateServiceButtons(aria2cRunning);
             
         } catch (error) {
             console.error('Error fetching system stats:', error);
             updateBadge(els.svcAria2c, false);
+            updateServiceButtons(false);
         }
     }
 
